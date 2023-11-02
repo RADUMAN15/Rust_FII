@@ -39,7 +39,5 @@ fn main() {
 
     if let Err(err) = rot13() {
         eprintln!("Error: {:?}", err);
-    } else {
-        println!("Done!");
     }
 }
