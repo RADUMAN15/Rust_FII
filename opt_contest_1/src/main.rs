@@ -1,5 +1,6 @@
 use std::fs;
 use std::io;
+use std::time::Instant;
 
 fn rot13() -> Result<(), io::Error> {
     let s = fs::read_to_string("input.txt")?;
@@ -37,7 +38,12 @@ fn rot13() -> Result<(), io::Error> {
 fn main() {
     //Ç███ÆÆ (caracterele sunt ASCII dar vad ca nu mi le vede drept ASCII analizatorul idk dc)
 
-    if let Err(err) = rot13() {
-        eprintln!("Error: {:?}", err);
+    let start = Instant::now();
+    {
+        if let Err(err) = rot13() {
+            eprintln!("Error: {:?}", err);
+        }
     }
+    println!("{:?}", start.elapsed());
+    
 }
