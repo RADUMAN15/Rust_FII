@@ -135,37 +135,41 @@ fn print(c: matrix) {
 
 use serde_derive::Deserialize;
 
-#[derive(Debug, Deserialize, Clone)]
-struct Person {
-    name: String,
-    phone: String,
+#[derive(Debug, Deserialize, Copy, Clone)]
+struct Person<'a> {
+    name: &'a str,
+    phone: &'a str,
     age: u32,
 }
 
 fn min_max_age() -> Result<(), io::Error> {
-    let ans: (String, String) = (String::from(" "), String::from(" "));
     let content = fs::read_to_string("person.json").unwrap();
-    let mut students: [Person; 4]; // = [Person {name: String::from(""),phone: String::from(""),age: 0,}.clone(); 4];
+    let mut students: [Person; 4] = [Person {
+        name: "",
+        phone: "",
+        age: 0,
+    }
+    .clone(); 4];
     if let Ok(persons) = serde_json::from_str::<[Person; 4]>(&content) {
         students = persons;
     } else {
         eprintln!("Failed to parse JSON into array of persons.");
     }
-    //print!("{:?}", students);
-    let mut res: (u32, u32, u32, u32) = (0, 0, 999999, 0);
+    let mut res: (u32, u32, u32, u32) = (std::u32::MAX, std::u32::MIN, 0, 0);
     let mut i = 0;
-    /*for pers in students{ //imi crapa deoarece nu initializez bine array persons
-
-        if pers.age < res.0{
-            res.1 = i;
+    for pers in students {
+        if pers.age < res.0 {
+            res.0 = pers.age;
+            res.2 = i;
         }
-        if pers.age > res.1{
+        if pers.age > res.1 {
+            res.1 = pers.age;
             res.3 = i;
         }
         i = i + 1;
     }
-    */
-    //printez linia res.0 si linia res.1
+    println!("The youngest person is : {:?}", students[res.2 as usize]);
+    println!("The oldest person is   : {:?}", students[res.3 as usize]);
     Ok(())
 }
 
@@ -318,5 +322,5 @@ fn main() {
     min_max_age().unwrap();
 
     //BONUS
-    //life().unwrap();
+    life().unwrap();
 }
