@@ -1,12 +1,9 @@
 use std::fs;
 use std::io;
 use std::vec;
-
-use alloc::collections;
-
 trait Commandtrait {
     fn get_name(&self) -> String;
-    fn exec(&mut self, line_args: Vec<&str>);
+    fn exec(&mut self, line_args: &Vec<&str>);
 }
 
 struct PingCommand {}
@@ -15,8 +12,10 @@ impl Commandtrait for PingCommand {
         let x: String = String::from("ping");
         x
     }
-    fn exec(&mut self, _line_args: Vec<&str>) {
-        print!("pong!");
+    fn exec(&mut self, line_args: &Vec<&str>) {
+        if line_args.len() == 0 {
+            println!("pong!");
+        }
     }
 }
 
@@ -26,21 +25,9 @@ impl Commandtrait for CountCommand {
         let x: String = String::from("count");
         x
     }
-    fn exec(&mut self, line_args: Vec<&str>) {
-        let mut v: Vec<&str> = Vec::new();
-        for arg in line_args.split(' ') {
-            if arg.cmp(" ").is_ne() {
-                //nu iau si spatiile
-                v.push(arg);
-            }
-        }
-
-        if v[0].cmp("count").is_ne() {
-            //nimic
-        } else {
-            //am comanda count
-            print!("counted {} args", v.len() - 2); //bug daca am mai multe spatii intre cuvinte (fix?)
-        }
+    fn exec(&mut self, line_args: &Vec<&str>) {
+        //println!("DEBUG : {:?}", line_args);
+        println!("counted {} elements", line_args.len());
     }
 }
 
@@ -53,25 +40,18 @@ impl Commandtrait for TimesCommand {
         x
     }
 
-    fn exec(&mut self, line_args:Vec<&str> ) {
-        if line_args.cmp("times").is_eq() {
-            self.counter += 1;
-            print!("count called for {} times", self.counter);
+    fn exec(&mut self, line_args: &Vec<&str>) {
+        if line_args.len() == 0 {
+            println!("function was called for {} times", self.counter);
+            self.counter = self.counter + 1;
         }
     }
 }
-
-/*struct StopCommand{
-
-}
-*/
-
 struct Terminal {
     collection: Vec<Box<dyn Commandtrait>>,
 }
 
 impl Terminal {
-
     fn new() -> Terminal {
         Terminal { collection: vec![] } //e ok ?
     }
@@ -80,53 +60,61 @@ impl Terminal {
         self.collection.push(new_command);
     }
 
-    fn run(&self) -> Result<(), io::Error> {
-
+    fn run(&mut self) -> Result<(), io::Error> {
         let file_commands = fs::read_to_string("command_file.txt")?;
-        
-        for command_line in file_commands.lines() {
 
-            //parsez comanda
-            let command_args  = command_line;
-            let mut v: Vec<&str> = Vec::new();
-            for arg in command_args.split_whitespace(){
-                v.push(arg);
-            }   
-            let mut command_exists : bool= false;
-            for commands in self.collection{
-
-                let collection_commands = commands.get_name();
-                if v[0].cmp(&collection_commands).is_eq(){
-                    command_exists = true;
+        'main_loop: for command_line in file_commands.lines() {
+            if command_line != "\n" && !command_line.starts_with(" ") {
+                //iau argumentele din comanda si le pun in vectorul v
+                let command_args = command_line;
+                let mut v: Vec<&str> = Vec::new();
+                for arg in command_args.split_whitespace() {
+                    v.push(arg);
                 }
-                if command_exists{ //command exists in recollection
+                //verific daca comanda exista in collection
+                //println!("DEBUG: {:?}", v);
+                let mut command_exists: bool = false;
+                for commands in &mut self.collection {
+                    let collection_commands = commands.get_name();
 
-                    let mut args_ok : bool = true;
-                    let mut arguments: Vec<&str> = Vec::new();
-                    for args in &v{
-                        if args.contains(" "){ //arg nu sunt valide
-                            args_ok = false;
-                        }
+                    if v.len() > 0 && v[0] == collection_commands {
+                        command_exists = true;
+                    } else if v.len() > 0 && v[0] == "stop" {
+                        break 'main_loop;
                     }
-                    if args_ok{
+
+                    if command_exists {
+                        //command exists in recollection
+
+                        let mut arguments: Vec<&str> = Vec::new();
                         let mut it = 0;
-                        for args in &v{
-                            if it != 0{
+
+                        for args in &v {
+                            if it != 0 && !args.contains(" ") {
                                 arguments.push(args);
                             }
                             it = it + 1;
+                        }
+
+                        let commands: &mut dyn Commandtrait = &mut **commands;
+                        commands.exec(&arguments);
+                        break;
                     }
-                    
-                    commands.exec(arguments);
                 }
-
-            } 
+            }
         }
-
         Ok(())
     }
 }
 fn main() {
-    
-    
+    let mut terminal = Terminal::new();
+
+    // Register commands
+    terminal.register(Box::new(PingCommand {}));
+    terminal.register(Box::new(CountCommand {}));
+    terminal.register(Box::new(TimesCommand { counter: 0 }));
+    // Run the terminal
+    if let Err(err) = terminal.run() {
+        eprintln!("Error: {}", err);
+    }
 }
