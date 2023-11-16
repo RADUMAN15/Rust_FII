@@ -1,9 +1,11 @@
+use rusqlite::{Connection, Result};
 use std::fs;
 use std::io;
 use std::vec;
+
 trait Commandtrait {
     fn get_name(&self) -> String;
-    fn exec(&mut self, line_args: &Vec<&str>);
+    fn exec(&mut self, line_args: &Vec<&str>) -> Result<()>;
 }
 
 struct PingCommand {}
@@ -12,10 +14,11 @@ impl Commandtrait for PingCommand {
         let x: String = String::from("ping");
         x
     }
-    fn exec(&mut self, line_args: &Vec<&str>) {
+    fn exec(&mut self, line_args: &Vec<&str>) -> Result<()> {
         if line_args.len() == 0 {
             println!("pong!");
         }
+        Ok(())
     }
 }
 
@@ -25,9 +28,10 @@ impl Commandtrait for CountCommand {
         let x: String = String::from("count");
         x
     }
-    fn exec(&mut self, line_args: &Vec<&str>) {
+    fn exec(&mut self, line_args: &Vec<&str>) -> Result<()> {
         //println!("DEBUG : {:?}", line_args);
         println!("counted {} elements", line_args.len());
+        Ok(())
     }
 }
 
@@ -40,11 +44,69 @@ impl Commandtrait for TimesCommand {
         x
     }
 
-    fn exec(&mut self, line_args: &Vec<&str>) {
+    fn exec(&mut self, line_args: &Vec<&str>) -> Result<()> {
         if line_args.len() == 0 {
             println!("function was called for {} times", self.counter);
             self.counter = self.counter + 1;
         }
+        Ok(())
+    }
+}
+#[derive(Debug)]
+struct BmData {
+    name: String,
+    url: String,
+}
+
+struct BmCommand {}
+impl Commandtrait for BmCommand {
+    fn get_name(&self) -> String {
+        let x: String = String::from("bm");
+        x
+    }
+    fn exec(&mut self, line_args: &Vec<&str>) -> Result<()> {
+        if line_args.len() > 0 {
+            if line_args[0] == "add" {
+                let conn = Connection::open("bookmarks.db")?;
+
+                let create = r"
+                CREATE TABLE IF NOT EXISTS bookmarks (
+                    name text not null,
+                    url  text not null
+                );
+                ";
+                conn.execute(create, ())?;
+
+                let to_insert = BmData {
+                    name: line_args[1].to_string(),
+                    url: line_args[2].to_string(),
+                };
+
+                conn.execute(
+                    "INSERT OR REPLACE INTO bookmarks (name, url) VALUES (?1, ?2)",
+                    (&to_insert.name, &to_insert.url),
+                )?;
+            } else if line_args[0] == "search" {
+                let conn = Connection::open("bookmarks.db")?;
+
+                let mut stmt = conn.prepare("SELECT name, url FROM bookmarks")?;
+                let name_url_iterator = stmt.query_map([], |row| {
+                    Ok(BmData {
+                        name: row.get(0)?,
+                        url: row.get(1)?,
+                    })
+                })?;
+
+                println!("Search output for key:{}", line_args[1]);
+                for key_val in name_url_iterator {
+                    let touple = key_val.unwrap();
+                    if touple.name.contains(line_args[1]) || touple.url.contains(line_args[1]) {
+                        println!("NAME : URL -> {} {}", touple.name, touple.url);
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }
 struct Terminal {
@@ -80,6 +142,7 @@ impl Terminal {
                     if v.len() > 0 && v[0] == collection_commands {
                         command_exists = true;
                     } else if v.len() > 0 && v[0] == "stop" {
+                        drop_database_table().unwrap(); //sterg tabelul deoarece daca tot rulez imi adauga inregistrari noi : )
                         break 'main_loop;
                     }
 
@@ -97,7 +160,7 @@ impl Terminal {
                         }
 
                         let commands: &mut dyn Commandtrait = &mut **commands;
-                        commands.exec(&arguments);
+                        commands.exec(&arguments).unwrap();
                         break;
                     }
                 }
@@ -106,6 +169,16 @@ impl Terminal {
         Ok(())
     }
 }
+
+fn drop_database_table() -> Result<()> {
+    let conn = Connection::open("bookmarks.db")?;
+
+    let delete = r"
+                DROP TABLE bookmarks;
+                ";
+    conn.execute(delete, ())?;
+    Ok(())
+}
 fn main() {
     let mut terminal = Terminal::new();
 
@@ -113,6 +186,8 @@ fn main() {
     terminal.register(Box::new(PingCommand {}));
     terminal.register(Box::new(CountCommand {}));
     terminal.register(Box::new(TimesCommand { counter: 0 }));
+    terminal.register(Box::new(BmCommand {}));
+
     // Run the terminal
     if let Err(err) = terminal.run() {
         eprintln!("Error: {}", err);

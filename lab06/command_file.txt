@@ -13,5 +13,16 @@ times abc
 
 ping
 times
+
+bm add foxes https://www.reddit.com/r/foxes/
+bm add rust_book https://doc.rust-lang.org/book/
+bm add foxes_pics https://www.boredpanda.com/beautiful-fox-pictures/
+
+bm search fox
+bm search rust
+
+stop 
+bm search book
+
 stop
 
