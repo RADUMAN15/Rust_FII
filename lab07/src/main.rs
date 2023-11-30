@@ -1,5 +1,5 @@
-use std::ops::{Add, Mul, Sub, Neg};
 use std::fmt;
+use std::ops::{Add, Mul, Neg, Sub};
 
 #[derive(Debug, PartialEq, PartialOrd)]
 struct Complex<T> {
@@ -22,10 +22,14 @@ where
         }
     }
 
-    fn conjugate(&self)->Complex<T> 
-    where T : Neg<Output = T>
+    fn conjugate(&self) -> Complex<T>
+    where
+        T: Neg<Output = T>,
     {
-        Complex{ real : self.real, imag : -self.imag}
+        Complex {
+            real: self.real,
+            imag: -self.imag,
+        }
     }
 
     fn display_string(&self) -> String
@@ -40,15 +44,14 @@ where
             format!("{}+{}i", self.real, self.imag)
         }
     }
-
 }
-impl From<i32> for Complex<f64>{
+impl From<i32> for Complex<f64> {
     fn from(real: i32) -> Self {
         Complex::new(real as f64, 0.0)
     }
 }
 
-impl From<f64> for Complex<f64>{
+impl From<f64> for Complex<f64> {
     fn from(real: f64) -> Self {
         Complex::new(real, 0.0)
     }
@@ -84,7 +87,7 @@ where
 
 impl<T> Mul<Complex<T>> for Complex<T>
 where
-    T: Mul<Output = T> + Sub<Output = T> + Add<Output=T> + Copy
+    T: Mul<Output = T> + Sub<Output = T> + Add<Output = T> + Copy,
 {
     type Output = Self;
 
@@ -98,7 +101,7 @@ where
 
 impl<T> Neg for Complex<T>
 where
-    T: Neg<Output = T> + Sub<Output=T> + Copy, 
+    T: Neg<Output = T> + Sub<Output = T> + Copy,
 {
     type Output = Self;
 
