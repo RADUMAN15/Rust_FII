@@ -1,7 +1,7 @@
+use ::serde_derive::Deserialize;
 use ::std::collections::HashMap;
 use ::std::fs;
 use ::std::io;
-use ::serde_derive::Deserialize;
 
 fn words_count() -> Result<(), io::Error> {
     let file_string = fs::read_to_string("p1.txt")?;
@@ -35,37 +35,36 @@ fn words_count() -> Result<(), io::Error> {
 }
 
 #[derive(Debug, Deserialize)]
-struct Main{
-    //count : u32, 
-    results : Vec<Spell>
+struct Main {
+    //count : u32,
+    results: Vec<Spell>,
 }
 #[derive(Debug, Deserialize)]
-struct Spell{
+struct Spell {
     //index : String,
-    name : String, 
-    url : String
+    name: String,
+    url: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct SpellData{
-    name : String,
-    level : u32,
-    desc : Vec<String>
+struct SpellData {
+    name: String,
+    level: u32,
+    desc: Vec<String>,
 }
-fn spells()->Result<(), ureq::Error>{
-
+fn spells() -> Result<(), ureq::Error> {
     let body: String = ureq::get("https://www.dnd5eapi.co/api/spells")
-    .call()?
-    .into_string()?;
+        .call()?
+        .into_string()?;
 
-    let first : Main = serde_json::from_str::<Main>(&body).unwrap();
+    let first: Main = serde_json::from_str::<Main>(&body).unwrap();
 
     println!("Introduceti un spell de la tastatura:");
-    let mut buffer = String::new();//from("Wall");
+    let mut buffer = String::new(); //from("Wall");
     io::stdin().read_line(&mut buffer)?;
     //buffer.remove(buffer.len() - 1);
     //buffer.shrink_to_fit();
-    
+
     let buffer = buffer.trim();
     let buffer = buffer.to_lowercase();
 
@@ -73,37 +72,34 @@ fn spells()->Result<(), ureq::Error>{
 
     let cpy: &str = &buffer;
     let mut spell_counter = 0;
-    for spell_type in &first.results{
-
+    for spell_type in &first.results {
         //println!("{:?}", spell_type);
         let spell_name_upper = spell_type.name.to_lowercase();
-        if spell_name_upper.contains(cpy) == true{
-
-            spell_counter+=1;
+        if spell_name_upper.contains(cpy) == true {
+            spell_counter += 1;
             let url: &str = spell_type.url.as_str();
             let mut spell_api = String::from("https://www.dnd5eapi.co");
             spell_api.push_str(url);
 
-            let body2: String = ureq::get(&spell_api)
-            .call()?
-            .into_string()?;
+            let body2: String = ureq::get(&spell_api).call()?.into_string()?;
 
-            let main2 : SpellData = serde_json::from_str::<SpellData>(&body2).unwrap();
+            let main2: SpellData = serde_json::from_str::<SpellData>(&body2).unwrap();
 
-            print!("{}. Name: {}\nLevel: {}\nDescription: ",spell_counter, main2.name, main2.level);//, main2.desc);
-            
-            for desc in &main2.desc{
-                
+            print!(
+                "{}. Name: {}\nLevel: {}\nDescription: ",
+                spell_counter, main2.name, main2.level
+            ); //, main2.desc);
+
+            for desc in &main2.desc {
                 println!("{}", desc);
             }
             println!();
-            
+
             // let spell_data : Main = serde_json::from_str::<_>(&body2).unwrap();
             //println!("{:?}", spell_type);
         }
     }
     Ok(())
-
 }
 
 fn main() {
