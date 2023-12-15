@@ -70,10 +70,10 @@ fn build_root_widget() -> impl Widget<AppState> {
             data.view_option = !data.view_option;
             if data.view_option {
                 data.view_name = "Tree".to_string();
-                data.process_info = "PROCESS IN TREE MODE\n".to_string();
+                data.process_info = printproc(false).unwrap();
             } else {
                 data.view_name = "List".to_string();
-                data.process_info = printproc().unwrap();
+                data.process_info = printproc(true).unwrap();
             }
             data.global_cpu = printglobalcpu().unwrap();
             data.global_mem = printglobalmem().unwrap();
@@ -175,7 +175,7 @@ fn get_username(uid: u32) -> Result<String, io::Error> {
     ))
 }
 
-fn printproc() -> Result<String, io::Error> {
+fn printproc(mode : bool) -> Result<String, io::Error> {
     let mut processes: Vec<ProcessData> = Vec::new();
 
     let mut _process_list: HashMap<u32, Vec<u32>> = HashMap::new();
@@ -325,24 +325,53 @@ fn printproc() -> Result<String, io::Error> {
     //println!("{:?}", _process_list);
     processes.sort_by_key(|proc| proc.pid);
 
-    for proc in &processes {
-        output.push_str("Name: ");
-        output.push_str(&proc.name);
-        output.push_str("\nCpu used: ");
-        output.push_str(&proc.cpu_used.to_string());
-        output.push_str("%\nMemory used: ");
-        output.push_str(&proc.memory_used.to_string());
-        output.push_str(" Kb\nPath: ");
-        if proc.path.len() == 0 {
-            output.push_str(".");
-        } else {
-            output.push_str(&proc.path);
+    if mode == true{
+        for proc in &processes {
+            output.push_str("Name: ");
+            output.push_str(&proc.name);
+            output.push_str("\nCpu used: ");
+            output.push_str(&proc.cpu_used.to_string());
+            output.push_str("%\nMemory used: ");
+            output.push_str(&proc.memory_used.to_string());
+            output.push_str(" Kb\nPath: ");
+            if proc.path.len() == 0 {
+                output.push_str(".");
+            } else {
+                output.push_str(&proc.path);
+            }
+            output.push_str("\nUsername: ");
+            output.push_str(&proc.author);
+            // output.push_str("\nPid: ");
+            // output.push_str(&proc.pid.to_string());
+            output.push_str("\n\n");
         }
-        output.push_str("\nUsername: ");
-        output.push_str(&proc.author);
-        output.push_str("\n\n");
+    }else{
+        let mut out : String = String::new();
+        display_tree(1, &sorted_vec, 0, &mut out);
+
+        print!("{out}");
+        output = out;
     }
+    
     Ok(output)
+}
+fn display_tree(pid: u32, process_list: &Vec<(u32, Vec<u32>)>, level: usize, ans : &mut String) {
+    for _ in 0..level {
+        //print!("  ");
+        ans.push_str("    ");
+    }
+
+    if let Some((current_pid, children)) = process_list.iter().find(|(id, _)| *id == pid) {
+
+        //println!("PID {}", current_pid);
+        ans.push_str("PID: ");
+        ans.push_str(&current_pid.to_string());
+        ans.push_str("\n");
+
+        for &child_pid in children {
+            display_tree(child_pid, process_list, level + 1, ans);
+        }
+    }
 }
 
 fn printglobalcpu() -> Result<String, io::Error> {
