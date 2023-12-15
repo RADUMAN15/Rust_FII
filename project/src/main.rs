@@ -16,7 +16,7 @@ struct ProcessData {
     pid: u32,
     ppid: u32,
     name: String,
-    cpu_used: u32,
+    cpu_used: f64,
     memory_used: u32,
     path: String,
     author: String,
@@ -26,7 +26,7 @@ trait Methods {
         pid: u32,
         ppid: u32,
         name: String,
-        cpu_used: u32,
+        cpu_used: f64,
         memory_used: u32,
         path: String,
         author: String,
@@ -38,7 +38,7 @@ impl Methods for ProcessData {
         pidi: u32,
         ppidi: u32,
         namei: String,
-        cpu_usedi: u32,
+        cpu_usedi: f64,
         memory_usedi: u32,
         pathi: String,
         authori: String,
@@ -75,8 +75,9 @@ fn build_root_widget() -> impl Widget<AppState> {
                 data.view_name = "List".to_string();
                 data.process_info = printproc().unwrap();
             }
-            data.global_cpu = printglobal().unwrap();
-            data.global_mem = printglobal().unwrap();
+            data.global_cpu = printglobalcpu().unwrap();
+            data.global_mem = printglobalmem().unwrap();
+
         })
         .fix_width(200.0)
         .fix_height(50.0);
@@ -131,9 +132,9 @@ fn main() {
     //K = PID, V = LIST OF SUBPROCESSES
     //let mut _process_list : HashMap<u32, Vec<ProcessData>> = HashMap::new();
 
-    printproc().unwrap();
+    // printproc().unwrap();
 
-    printglobal().unwrap();
+    // printglobal().unwrap();
 
     let main_window = WindowDesc::new(build_root_widget())
         .title(WINDOW_TITLE)
@@ -192,7 +193,7 @@ fn printproc() -> Result<String, io::Error> {
                 let mut uid: u32 = 0;
 
                 let mut add: ProcessData =
-                    ProcessData::new(0, 0, "".to_string(), 0, 0, "".to_string(), "".to_string());
+                    ProcessData::new(0, 0, "".to_string(), 0.0, 0, "".to_string(), "".to_string());
                 for line in proc_status.lines() {
                     if line.contains("Name") {
                         //println!("{line}");
@@ -266,10 +267,10 @@ fn printproc() -> Result<String, io::Error> {
                                             let proc_usage_sec: f64 = utime_sec + stime_sec;
                                             let proc_usage_procents: f64 =
                                                 proc_usage_sec * 100.0 / elapsed_time_sec;
-                                            let proc_usage_procents = proc_usage_procents as u32;
+                                            //let proc_usage_procents = proc_usage_procents as u32;
 
                                             //println!("CPU usage: {}%", proc_usage_procents);
-                                            add.cpu_used = proc_usage_procents;
+                                            add.cpu_used = (proc_usage_procents * 100.0).round() / 100.0;
                                         }
                                     }
                                 }
@@ -344,7 +345,7 @@ fn printproc() -> Result<String, io::Error> {
     Ok(output)
 }
 
-fn printglobal() -> Result<String, io::Error> {
+fn printglobalcpu() -> Result<String, io::Error> {
     let global_proc_stat_path: String = String::from("/proc/stat");
     let processor_stat: String = fs::read_to_string(global_proc_stat_path)?;
 
@@ -369,4 +370,41 @@ fn printglobal() -> Result<String, io::Error> {
     out.push_str("%");
 
     Ok(out)
+}
+
+fn printglobalmem()->Result<String, io::Error>{
+
+    let global_proc_stat_path: String = String::from("/proc/meminfo");
+    let mem_stat: String = fs::read_to_string(global_proc_stat_path)?;
+    let mut mem_total_string = String :: new();
+    let mut mem_available_string = String :: new();
+
+    for line in mem_stat.lines(){
+
+        if line.starts_with("MemTotal"){
+            let args : Vec<&str> = line.split_whitespace().into_iter().collect();
+            mem_total_string = args.get(1).unwrap().to_string();
+        }
+        if line.starts_with("MemAvailable"){
+            let args : Vec<&str> = line.split_whitespace().into_iter().collect();
+            mem_available_string = args.get(1).unwrap().to_string();
+        }
+    }
+    let mem_total_u32 = mem_total_string.parse::<u32>().unwrap();
+    let mem_available_u32 = mem_available_string.parse::<u32>().unwrap();
+
+    let mem_totgb: f64 = ((mem_total_u32 as f64 * 0.000001) * 100.0).round() / 100.0;
+
+    let global_usage = mem_total_u32 - mem_available_u32;
+    let global_gb_usage: f64 = ((global_usage as f64 * 0.000001) * 100.0).round() / 100.0;
+
+    // println!("CPU USAGE: {}%",global_usage);
+
+    let mut out = String::from("GLOBAL MEM USAGE: ");
+    out.push_str(&global_gb_usage.to_string());
+    out.push_str("GB / ");
+    out.push_str(&mem_totgb.to_string());
+    out.push_str("GB");
+    Ok(out)
+
 }
