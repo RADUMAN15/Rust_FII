@@ -2,6 +2,8 @@ use druid::widget::Button;
 use druid::widget::Checkbox;
 use druid::widget::SizedBox;
 use druid::widget::{Align, Flex, Label, Scroll};
+use druid::Color;
+use druid::UnitPoint;
 use druid::WidgetExt;
 use druid::{AppLauncher, Data, Lens, LocalizedString, Widget, WindowDesc};
 use std::collections::HashMap;
@@ -9,7 +11,7 @@ use std::fs;
 use std::io;
 
 const VERTICAL_WIDGET_SPACING: f64 = 20.0;
-const WINDOW_TITLE: LocalizedString<AppState> = LocalizedString::new("Task Mandanger");
+const WINDOW_TITLE: LocalizedString<AppState> = LocalizedString::new("Task Raduger");
 //const HORIZONTAL_WIDGET_SPACING: f64 = 20.0;
 
 #[derive(Debug, Clone)]
@@ -59,12 +61,12 @@ impl Methods for ProcessData {
 #[derive(Clone, Data, Lens)]
 struct AppState {
     view_name: String,
-    view_option: bool,  //0 list 1 tree
-    view_pname : bool,
-    view_cpu : bool,
-    view_mem : bool,
-    view_usr : bool,
-    view_path : bool,
+    view_option: bool, //0 list 1 tree
+    view_pname: bool,
+    view_cpu: bool,
+    view_mem: bool,
+    view_usr: bool,
+    view_path: bool,
     process_info: String,
     global_cpu: String,
     global_mem: String,
@@ -76,15 +78,29 @@ fn build_root_widget() -> impl Widget<AppState> {
             data.view_option = !data.view_option;
             if data.view_option {
                 data.view_name = "Tree".to_string();
-                data.process_info = printproc(!data.view_option, data.view_pname, data.view_cpu, data.view_mem, data.view_usr, data.view_path).unwrap();
+                data.process_info = printproc(
+                    !data.view_option,
+                    data.view_pname,
+                    data.view_cpu,
+                    data.view_mem,
+                    data.view_usr,
+                    data.view_path,
+                )
+                .unwrap_or("".to_string());
             } else {
                 data.view_name = "List".to_string();
-                data.process_info = printproc(!data.view_option, data.view_pname, data.view_cpu, data.view_mem, data.view_usr, data.view_path).unwrap();
-
+                data.process_info = printproc(
+                    !data.view_option,
+                    data.view_pname,
+                    data.view_cpu,
+                    data.view_mem,
+                    data.view_usr,
+                    data.view_path,
+                )
+                .unwrap_or("".to_string());
             }
-            data.global_cpu = printglobalcpu().unwrap();
-            data.global_mem = printglobalmem().unwrap();
-
+            data.global_cpu = printglobalcpu().unwrap_or("".to_string());
+            data.global_mem = printglobalmem().unwrap_or("".to_string());
         })
         .fix_width(200.0)
         .fix_height(50.0);
@@ -100,86 +116,129 @@ fn build_root_widget() -> impl Widget<AppState> {
 
     let sized_scroll = SizedBox::new(scrollable_label_processes)
         .expand_height()
-        .height(500.0)
+        .height(510.0)
         .expand_width()
-        .width(400.0); // Wrap the Label in a Scroll widget to make it scrollable
+        .width(400.0) // Wrap the Label in a Scroll widget to make it scrollable
+        .border(Color::GRAY, 3.5)
+        //.expand()
+        ;
 
     let label_global_cpu: Label<AppState> = Label::new(|data: &AppState, _env: &_| {
         // Fix: Use the name field from the AppState.
         data.global_cpu.to_string()
     })
-    .with_text_size(15.0)
-    ;
+    .with_text_size(16.0);
 
     let label_global_mem: Label<AppState> = Label::new(|data: &AppState, _env: &_| {
         // Fix: Use the name field from the AppState.
         data.global_mem.to_string()
     })
-    .with_text_size(15.0)
-    ;
+    .with_text_size(16.0);
 
     let check_pname = Checkbox::new("Process Name")
         .lens(AppState::view_pname)
         .on_click(|_ctx, _data, _env| {
             // Handle checkbox click event
             _data.view_pname = !_data.view_pname;
-            _data.process_info = printproc(!_data.view_option, _data.view_pname, _data.view_cpu, _data.view_mem, _data.view_usr, _data.view_path).unwrap();
+            _data.process_info = printproc(
+                !_data.view_option,
+                _data.view_pname,
+                _data.view_cpu,
+                _data.view_mem,
+                _data.view_usr,
+                _data.view_path,
+            )
+            .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_pname);
-        })
-        ;
+        });
 
-    let check_cpu = Checkbox::new("Process Cpu   ")
+    let check_cpu = Checkbox::new("Process Cpu")
         .lens(AppState::view_cpu)
         .on_click(|_ctx, _data, _env| {
             // Handle checkbox click event
             _data.view_cpu = !_data.view_cpu;
-            _data.process_info = printproc(!_data.view_option, _data.view_pname, _data.view_cpu, _data.view_mem, _data.view_usr, _data.view_path).unwrap();
+            _data.process_info = printproc(
+                !_data.view_option,
+                _data.view_pname,
+                _data.view_cpu,
+                _data.view_mem,
+                _data.view_usr,
+                _data.view_path,
+            )
+            .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_cpu);
-        })
-        ;
+        });
 
-    let check_mem = Checkbox::new("Process Mem ")
+    let check_mem = Checkbox::new("Process Mem")
         .lens(AppState::view_mem)
         .on_click(|_ctx, _data, _env| {
             // Handle checkbox click event
             _data.view_mem = !_data.view_mem;
-            _data.process_info = printproc(!_data.view_option, _data.view_pname, _data.view_cpu, _data.view_mem, _data.view_usr, _data.view_path).unwrap();
+            _data.process_info = printproc(
+                !_data.view_option,
+                _data.view_pname,
+                _data.view_cpu,
+                _data.view_mem,
+                _data.view_usr,
+                _data.view_path,
+            )
+            .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_mem);
-        })
-        ;
-    
+        });
+
     let check_usr = Checkbox::new("Process User")
         .lens(AppState::view_usr)
         .on_click(|_ctx, _data, _env| {
             // Handle checkbox click event
             _data.view_usr = !_data.view_usr;
-            _data.process_info = printproc(!_data.view_option, _data.view_pname, _data.view_cpu, _data.view_mem, _data.view_usr, _data.view_path).unwrap();
+            _data.process_info = printproc(
+                !_data.view_option,
+                _data.view_pname,
+                _data.view_cpu,
+                _data.view_mem,
+                _data.view_usr,
+                _data.view_path,
+            )
+            .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_usr);
-        })
-        ;
+        });
     let check_path = Checkbox::new("Process Path")
         .lens(AppState::view_path)
         .on_click(|_ctx, _data, _env| {
             // Handle checkbox click event
             _data.view_path = !_data.view_path;
-            _data.process_info = printproc(!_data.view_option, _data.view_pname, _data.view_cpu, _data.view_mem, _data.view_usr, _data.view_path).unwrap();
+            _data.process_info = printproc(
+                !_data.view_option,
+                _data.view_pname,
+                _data.view_cpu,
+                _data.view_mem,
+                _data.view_usr,
+                _data.view_path,
+            )
+            .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_path);
-        })
-        ;
+        });
 
-    //println!("state:{}",AppState::view_pname);
     let checkbox_layout = Flex::column()
-    .with_child(check_pname)
-    .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
-    .with_child(check_cpu)
-    .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
-    .with_child(check_mem)
-    .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
-    .with_child(check_usr)
-    .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
-    .with_child(check_path)
-    .align_left()
-    ;
+        .with_child(check_pname)
+        .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
+        .with_child(check_cpu)
+        .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
+        .with_child(check_mem)
+        .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
+        .with_child(check_usr)
+        .with_spacer(0.5 * VERTICAL_WIDGET_SPACING)
+        .with_child(check_path)
+        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Start);
+
+    let global_layout = Flex::column()
+        .with_child(label_global_cpu)
+        .with_spacer(1.0 * VERTICAL_WIDGET_SPACING)
+        .with_child(label_global_mem)
+        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Start)
+        //.fix_width(600.0)
+        .border(Color::GRAY, 3.5)
+        .expand();
 
     // arrange the two widgets vertically, with some padding
     let change_view_layout = Flex::column()
@@ -188,22 +247,20 @@ fn build_root_widget() -> impl Widget<AppState> {
         .with_child(button)
         .with_spacer(1.0 * VERTICAL_WIDGET_SPACING)
         .with_child(checkbox_layout)
-        .with_spacer(12.0 * VERTICAL_WIDGET_SPACING)
-        .with_child(label_global_cpu)
-        .with_spacer(1.0 * VERTICAL_WIDGET_SPACING)
-        .with_child(label_global_mem)
-        .align_left();
-        
+        .with_spacer(10.0 * VERTICAL_WIDGET_SPACING + 12.5)
+        .with_child(global_layout)
+        .fix_size(340.0, 600.0)
+        .align_horizontal(UnitPoint::CENTER);
+
     let layout2 = Flex::row()
         .with_spacer(10.0)
         .with_child(sized_scroll)
         .with_flex_spacer(50.0)
         .with_child(change_view_layout)
-        .with_spacer(80.0);
+        .with_spacer(25.0);
 
     // center the two widgets in the available space
     Align::centered(layout2)
-
 }
 fn main() {
     //K = PID, V = LIST OF SUBPROCESSES
@@ -221,11 +278,11 @@ fn main() {
     let initial_state = AppState {
         view_name: "not selected yet".into(),
         view_option: false,
-        view_pname : false,
-        view_cpu : false,
-        view_mem : false,
-        view_usr : false,
-        view_path : false,
+        view_pname: false,
+        view_cpu: false,
+        view_mem: false,
+        view_usr: false,
+        view_path: false,
         process_info: "".into(),
         global_cpu: "".into(),
         global_mem: "".into(),
@@ -257,7 +314,14 @@ fn get_username(uid: u32) -> Result<String, io::Error> {
     ))
 }
 
-fn printproc(mode : bool, pname : bool, cpu : bool, mem : bool, user : bool, path : bool) -> Result<String, io::Error> {
+fn printproc(
+    mode: bool,
+    pname: bool,
+    cpu: bool,
+    mem: bool,
+    user: bool,
+    path: bool,
+) -> Result<String, io::Error> {
     let mut processes: Vec<ProcessData> = Vec::new();
 
     let mut _process_list: HashMap<u32, Vec<u32>> = HashMap::new();
@@ -352,7 +416,8 @@ fn printproc(mode : bool, pname : bool, cpu : bool, mem : bool, user : bool, pat
                                             //let proc_usage_procents = proc_usage_procents as u32;
 
                                             //println!("CPU usage: {}%", proc_usage_procents);
-                                            add.cpu_used = (proc_usage_procents * 100.0).round() / 100.0;
+                                            add.cpu_used =
+                                                (proc_usage_procents * 100.0).round() / 100.0;
                                         }
                                     }
                                 }
@@ -407,25 +472,24 @@ fn printproc(mode : bool, pname : bool, cpu : bool, mem : bool, user : bool, pat
     //println!("{:?}", _process_list);
     processes.sort_by_key(|proc| proc.pid);
 
-    if mode{
+    if mode {
         for proc in &processes {
-            if pname{
+            if pname {
                 output.push_str("Name: ");
                 output.push_str(&proc.name);
                 output.push_str(" \n");
-
             }
-            if cpu{
+            if cpu {
                 output.push_str("Cpu used: ");
                 output.push_str(&proc.cpu_used.to_string());
                 output.push_str("%\n");
             }
-            if mem{
+            if mem {
                 output.push_str("Mem used: ");
                 output.push_str(&proc.memory_used.to_string());
                 output.push_str(" Kb\n");
             }
-            if path{
+            if path {
                 output.push_str("Path: ");
                 if proc.path.is_empty() {
                     output.push_str(".\n");
@@ -434,7 +498,7 @@ fn printproc(mode : bool, pname : bool, cpu : bool, mem : bool, user : bool, pat
                     output.push_str(" \n");
                 }
             }
-            if user{
+            if user {
                 output.push_str("Username: ");
                 output.push_str(&proc.author);
                 output.push_str(" \n");
@@ -443,62 +507,93 @@ fn printproc(mode : bool, pname : bool, cpu : bool, mem : bool, user : bool, pat
             // output.push_str(&proc.pid.to_string());
             output.push_str(" \n");
         }
-    }else{
-        let mut out : String = String::new();
-        display_tree(1, &sorted_vec, 1, &mut out, &processes, pname, cpu, mem, user, path);
+    } else {
+        let mut out: String = String::new();
+        display_tree(
+            1,
+            &sorted_vec,
+            1,
+            &mut out,
+            &processes,
+            pname,
+            cpu,
+            mem,
+            user,
+            path,
+        );
         output = out;
     }
-    
+
     Ok(output)
 }
 #[allow(clippy::too_many_arguments)]
-fn display_tree(pid: u32, process_list: &Vec<(u32, Vec<u32>)>, level: usize, ans : &mut String, process : &Vec<ProcessData>, pname : bool, cpu : bool, mem : bool, user : bool, path : bool) {
+fn display_tree(
+    pid: u32,
+    process_list: &Vec<(u32, Vec<u32>)>,
+    level: usize,
+    ans: &mut String,
+    process: &Vec<ProcessData>,
+    pname: bool,
+    cpu: bool,
+    mem: bool,
+    user: bool,
+    path: bool,
+) {
     for _ in 1..level {
         //print!("  ");
         //ans.push_str("    ");
         ans.push_str("----");
-
     }
 
     if let Some((current_pid, children)) = process_list.iter().find(|(id, _)| *id == pid) {
-
         //println!("PID {}", current_pid);
-        ans.push('[');                    
+        ans.push('[');
         ans.push_str(&current_pid.to_string());
-        ans.push(']');                    
-        for proc in process{
-                if proc.pid == *current_pid{
-                    if pname{
-                        ans.push('[');                    
-                        ans.push_str(&proc.name);
-                        ans.push('[');                    
-                    }
-                    if cpu{
-                        ans.push('[');                    
-                        ans.push_str(&proc.cpu_used.to_string());
-                        ans.push_str("%]");
-                    }
-                    if mem{
-                        ans.push('[');                    
-                        ans.push_str(&proc.memory_used.to_string());
-                        ans.push_str(" Kb]");
-                    }
-                    if user{
-                        ans.push('[');                    
-                        ans.push_str(&proc.author);
-                        ans.push(']');                    
-                    }
-                    if path{
-                        ans.push('[');                    
-                        ans.push_str(&proc.path);
-                        ans.push(']');                    
-                    }
-                    break;       
+        ans.push(']');
+        for proc in process {
+            if proc.pid == *current_pid {
+                if pname {
+                    ans.push('[');
+                    ans.push_str(&proc.name);
+                    ans.push(']');
                 }
-            }        
+                if cpu {
+                    ans.push('[');
+                    ans.push_str(&proc.cpu_used.to_string());
+                    ans.push_str("%]");
+                }
+                if mem {
+                    ans.push('[');
+                    ans.push_str(&proc.memory_used.to_string());
+                    ans.push_str(" Kb]");
+                }
+                if user {
+                    ans.push('[');
+                    ans.push_str(&proc.author);
+                    ans.push(']');
+                }
+                if path {
+                    ans.push('[');
+                    ans.push_str(&proc.path);
+                    ans.push(']');
+                }
+                break;
+            }
+        }
         ans.push_str(" \n");
         for &child_pid in children {
-            display_tree(child_pid, process_list, level + 1, ans, process, pname, cpu, mem, user, path);
+            display_tree(
+                child_pid,
+                process_list,
+                level + 1,
+                ans,
+                process,
+                pname,
+                cpu,
+                mem,
+                user,
+                path,
+            );
         }
     }
 }
@@ -509,7 +604,7 @@ fn printglobalcpu() -> Result<String, io::Error> {
     let mut out: String = String::from("GLOBAL CPU USAGE: ");
 
     let mut it = 0;
-    while it < 1{
+    while it < 1 {
         let line = processor_stat.lines().nth(it).unwrap();
         //println!("{line}");
 
@@ -528,35 +623,33 @@ fn printglobalcpu() -> Result<String, io::Error> {
         //println!("\nidle:{idle_str}");
         let iowait_u32 = iowait_str.parse::<u32>().unwrap();
 
-
         //let global_usage = 100 - (100 * idle_u32) / sum;
 
-        let global_usage: f64 = ((sum - iowait_u32 - idle_u32) as f64 / sum as f64 * 10000.0).round()/100.0;
+        let global_usage: f64 =
+            ((sum - iowait_u32 - idle_u32) as f64 / sum as f64 * 10000.0).round() / 100.0;
         //println!("proc:{it} -> {global_usage}");
         out.push_str(&global_usage.to_string());
         out.push('%');
 
-        it+=1;
+        it += 1;
     }
-    
+
     Ok(out)
 }
 
-fn printglobalmem()->Result<String, io::Error>{
-
+fn printglobalmem() -> Result<String, io::Error> {
     let global_proc_stat_path: String = String::from("/proc/meminfo");
     let mem_stat: String = fs::read_to_string(global_proc_stat_path)?;
-    let mut mem_total_string = String :: new();
-    let mut mem_available_string = String :: new();
+    let mut mem_total_string = String::new();
+    let mut mem_available_string = String::new();
 
-    for line in mem_stat.lines(){
-
-        if line.starts_with("MemTotal"){
-            let args : Vec<&str> = line.split_whitespace().collect();
+    for line in mem_stat.lines() {
+        if line.starts_with("MemTotal") {
+            let args: Vec<&str> = line.split_whitespace().collect();
             mem_total_string = args.get(1).unwrap().to_string();
         }
-        if line.starts_with("MemAvailable"){
-            let args : Vec<&str> = line.split_whitespace().collect();
+        if line.starts_with("MemAvailable") {
+            let args: Vec<&str> = line.split_whitespace().collect();
             mem_available_string = args.get(1).unwrap().to_string();
         }
     }
@@ -576,5 +669,4 @@ fn printglobalmem()->Result<String, io::Error>{
     out.push_str(&mem_totgb.to_string());
     out.push_str("GB");
     Ok(out)
-
 }
