@@ -73,38 +73,6 @@ struct AppState {
 }
 
 fn build_root_widget() -> impl Widget<AppState> {
-    let button = Button::new("Change ViewMode")
-        .on_click(|_ctx, data: &mut AppState, _env| {
-            data.view_option = !data.view_option;
-            if data.view_option {
-                data.view_name = "Tree".to_string();
-                data.process_info = printproc(
-                    !data.view_option,
-                    data.view_pname,
-                    data.view_cpu,
-                    data.view_mem,
-                    data.view_usr,
-                    data.view_path,
-                )
-                .unwrap_or("".to_string());
-            } else {
-                data.view_name = "List".to_string();
-                data.process_info = printproc(
-                    !data.view_option,
-                    data.view_pname,
-                    data.view_cpu,
-                    data.view_mem,
-                    data.view_usr,
-                    data.view_path,
-                )
-                .unwrap_or("".to_string());
-            }
-            data.global_cpu = printglobalcpu().unwrap_or("".to_string());
-            data.global_mem = printglobalmem().unwrap_or("".to_string());
-        })
-        .fix_width(200.0)
-        .fix_height(50.0);
-
     let label_view_mode = Label::new(|data: &AppState, _env: &_| {
         // Fix: Use the name field from the AppState.
         format!("ViewMode: {}", data.view_name)
@@ -115,13 +83,13 @@ fn build_root_widget() -> impl Widget<AppState> {
     let scrollable_label_processes = Scroll::new(label_processes);
 
     let sized_scroll = SizedBox::new(scrollable_label_processes)
-        .expand_height()
-        .height(510.0)
-        .expand_width()
-        .width(400.0) // Wrap the Label in a Scroll widget to make it scrollable
-        .border(Color::GRAY, 3.5)
-        //.expand()
-        ;
+    .expand_height()
+    .height(510.0)
+    .expand_width()
+    .width(400.0) // Wrap the Label in a Scroll widget to make it scrollable
+    .border(Color::GRAY, 3.5)
+    //.expand()
+    ;
 
     let label_global_cpu: Label<AppState> = Label::new(|data: &AppState, _env: &_| {
         // Fix: Use the name field from the AppState.
@@ -218,6 +186,38 @@ fn build_root_widget() -> impl Widget<AppState> {
             .unwrap_or("".to_string());
             //println!("Checkbox clicked: {}",_data.view_path);
         });
+
+    let button = Button::new("Change ViewMode")
+        .on_click(|_ctx, data: &mut AppState, _env| {
+            data.view_option = !data.view_option;
+            if data.view_option {
+                data.view_name = "Tree".to_string();
+                data.process_info = printproc(
+                    !data.view_option,
+                    data.view_pname,
+                    data.view_cpu,
+                    data.view_mem,
+                    data.view_usr,
+                    data.view_path,
+                )
+                .unwrap_or("".to_string());
+            } else {
+                data.view_name = "List".to_string();
+                data.process_info = printproc(
+                    !data.view_option,
+                    data.view_pname,
+                    data.view_cpu,
+                    data.view_mem,
+                    data.view_usr,
+                    data.view_path,
+                )
+                .unwrap_or("".to_string());
+            }
+            data.global_cpu = printglobalcpu().unwrap_or("".to_string());
+            data.global_mem = printglobalmem().unwrap_or("".to_string());
+        })
+        .fix_width(200.0)
+        .fix_height(50.0);
 
     let checkbox_layout = Flex::column()
         .with_child(check_pname)
@@ -599,40 +599,68 @@ fn display_tree(
 }
 
 fn printglobalcpu() -> Result<String, io::Error> {
-    let global_proc_stat_path: String = String::from("/proc/stat");
-    let processor_stat: String = fs::read_to_string(global_proc_stat_path)?;
     let mut out: String = String::from("GLOBAL CPU USAGE: ");
 
-    let mut it = 0;
-    while it < 1 {
-        let line = processor_stat.lines().nth(it).unwrap();
-        //println!("{line}");
+    let mut cpu_usage: f64 = 0.0;
+    let paths: fs::ReadDir = fs::read_dir("/proc").unwrap();
+    for path in paths {
+        let file_name: std::ffi::OsString = path.unwrap().file_name();
+        if let Some(name) = file_name.to_str() {
+            if name.parse::<f64>().is_ok() {
+                let mut path_stat_file: String = String::from("/proc/");
+                path_stat_file.push_str(name);
+                path_stat_file.push_str("/stat");
 
-        let args: Vec<&str> = line.split_whitespace().collect();
-        let mut sum: u32 = 0;
-        for arg in &args {
-            if arg.parse::<u32>().is_ok() {
-                let value = arg.parse::<u32>().unwrap();
-                sum += value;
+                let proc_status: String = fs::read_to_string(path_stat_file)?;
+
+                let status_args: Vec<&str> = proc_status.split_whitespace().collect();
+
+                if let Some(utime) = status_args.get(13) {
+                    if let Some(stime) = status_args.get(14) {
+                        if let Some(starttime) = status_args.get(21) {
+                            let path_uptime_file: String = String::from("/proc/uptime");
+                            let proc_uptime: String = fs::read_to_string(path_uptime_file)?;
+
+                            let status_args: Vec<&str> = proc_uptime.split_whitespace().collect();
+                            let system_uptime: &&str = status_args.first().unwrap();
+
+                            if let Ok(system_uptime_f64) = system_uptime.parse::<f64>() {
+                                if let Ok(mut utime_sec) = utime.parse::<f64>() {
+                                    utime_sec /= 100.0;
+                                    //println!("utime_sec: {}", utime_sec);
+
+                                    if let Ok(mut stime_sec) = stime.parse::<f64>() {
+                                        stime_sec /= 100.0;
+                                        //println!("utime_sec: {}", stime_sec);
+
+                                        if let Ok(mut starttime_sec) = starttime.parse::<f64>() {
+                                            starttime_sec /= 100.0;
+                                            //println!("utime_sec: {}", starttime_sec);
+
+                                            let elapsed_time_sec: f64 =
+                                                system_uptime_f64 - starttime_sec;
+                                            let proc_usage_sec: f64 = utime_sec + stime_sec;
+                                            let proc_usage_procents: f64 =
+                                                proc_usage_sec * 100.0 / elapsed_time_sec;
+                                            //let proc_usage_procents = proc_usage_procents as u32;
+
+                                            //println!("CPU usage: {}%", proc_usage_procents);
+                                            let cpu_used =
+                                                (proc_usage_procents * 100.0).round() / 100.0;
+                                            cpu_usage += cpu_used.floor();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        let idle_str = args.get(4).unwrap();
-        //println!("\nidle:{idle_str}");
-        let idle_u32 = idle_str.parse::<u32>().unwrap();
-        let iowait_str = args.get(5).unwrap();
-        //println!("\nidle:{idle_str}");
-        let iowait_u32 = iowait_str.parse::<u32>().unwrap();
-
-        //let global_usage = 100 - (100 * idle_u32) / sum;
-
-        let global_usage: f64 =
-            ((sum - iowait_u32 - idle_u32) as f64 / sum as f64 * 10000.0).round() / 100.0;
-        //println!("proc:{it} -> {global_usage}");
-        out.push_str(&global_usage.to_string());
-        out.push('%');
-
-        it += 1;
     }
+    let cpu_usage: f64 = ((cpu_usage * 100.0).round() / 100.0) % 100.0;
+    out.push_str(&cpu_usage.to_string());
+    out.push('%');
 
     Ok(out)
 }
