@@ -1,0 +1,1 @@
+<h2>A basic implementation of a TaskManager application(displaying process information and memory consumption) under the Linux operating system. The project is developed using Rust and also provides a GUI made with rust crates.</h2>
